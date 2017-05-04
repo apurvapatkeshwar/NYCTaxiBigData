@@ -16,7 +16,7 @@ header = data.first()
 header2 = data2.first()
 data = data.filter(lambda row : row != header and row != header2)
 data = data.map(lambda row : row.replace('"',''))
-#data=data.filter(lambda row:row.replaceAll('\"',''))
+
 data = data.map(lambda x: x.split(",")).\
     map(lambda y: ( y[1]))
 #
@@ -44,5 +44,5 @@ split_col2 = split(df['start_t'], ':')
 df = df.withColumn('start_hour', split_col2.getItem(0))
 df = df.withColumn('start_minute', split_col2.getItem(1))
 
-groupby_date=df.groupby('start_hour').count().sort(col("start_hour").asc())
-groupby_date.toPandas().to_csv('hour_analysis.csv')
+groupby_month=df.groupby('start_month').count().sort(col("start_month").asc())
+groupby_month.toPandas().to_csv('month_analysis.csv')

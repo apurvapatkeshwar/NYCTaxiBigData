@@ -16,13 +16,14 @@ header = data.first()
 header2 = data2.first()
 data = data.filter(lambda row : row != header and row != header2)
 data = data.map(lambda row : row.replace('"',''))
-#data=data.filter(lambda row:row.replaceAll('\"',''))
 data = data.map(lambda x: x.split(",")).\
-    map(lambda y: ( y[1]))
+    map(lambda y: (y[1],float(y[5]),float(y[6])))
 #
 
 customSchema = StructType([ \
-    StructField("starttime", StringType(), True)])
+    StructField("starttime", StringType(), True), \
+    StructField("start_station_latitude", DoubleType(), True), \
+    StructField("start_station_longitude", DoubleType(), True)])
 
 df = sqlContext.createDataFrame(data, customSchema)
 split_col = split(df['starttime'], ' ')
@@ -44,5 +45,5 @@ split_col2 = split(df['start_t'], ':')
 df = df.withColumn('start_hour', split_col2.getItem(0))
 df = df.withColumn('start_minute', split_col2.getItem(1))
 
-groupby_date=df.groupby('start_hour').count().sort(col("start_hour").asc())
-groupby_date.toPandas().to_csv('hour_analysis.csv')
+groupby_station_count=df.groupby(['start_station_latitude','start_station_longitude']).count()
+groupby_station_count.toPandas().to_csv('pickup_count.csv')

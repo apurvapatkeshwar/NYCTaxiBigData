@@ -18,31 +18,20 @@ data = data.filter(lambda row : row != header and row != header2)
 data = data.map(lambda row : row.replace('"',''))
 #data=data.filter(lambda row:row.replaceAll('\"',''))
 data = data.map(lambda x: x.split(",")).\
-    map(lambda y: ( y[1]))
+    map(lambda y: (float(y[9]),float(y[10])))
 #
 
 customSchema = StructType([ \
-    StructField("starttime", StringType(), True)])
+    StructField("end_station_latitude", DoubleType(), True), \
+    StructField("end_station_longitude", DoubleType(), True)])
 
 df = sqlContext.createDataFrame(data, customSchema)
 split_col = split(df['starttime'], ' ')
 df.show()
 df = df.withColumn('start_date', split_col.getItem(0))
 df = df.withColumn('start_t', split_col.getItem(1))
-
-
 df.show()
-split_col1 = split(df['start_date'], "/")
-df = df.withColumn('start_month', split_col1.getItem(0))
-df = df.withColumn('start_d', split_col1.getItem(1))
 
-#df = df.withColumn('start_year', split_col.getItem(2))
 
-#df=df.drop('start_date').collect()
-df.show()
-split_col2 = split(df['start_t'], ':')
-df = df.withColumn('start_hour', split_col2.getItem(0))
-df = df.withColumn('start_minute', split_col2.getItem(1))
-
-groupby_date=df.groupby('start_hour').count().sort(col("start_hour").asc())
-groupby_date.toPandas().to_csv('hour_analysis.csv')
+groupby_station_count=df.groupby(['end_station_latitude','end_station_longitude']).count()
+groupby_station_count.toPandas().to_csv('dropoff_count.csv')
