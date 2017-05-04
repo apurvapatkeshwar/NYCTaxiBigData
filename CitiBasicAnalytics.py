@@ -12,12 +12,12 @@ sc = SparkContext.getOrCreate()
 #Creating SQLContext for the RDD to pyspark dataframe for easy analytics
 sqlContext = SQLContext(sc)
 
-#Loading the complete cleaned Citibike Data present in HDFS
+#Loading the complete cleaned Citibike Data present in HDFS, the citibikedata directory in HDFS contains cleaned data of all months
 data=sc.textFile("citibikedata")
 #Getting the header of the citibike data (csv file)
 header = data.first()
 
-#The header of November and December differs, so loading that data and taking its header
+#The header of November and December differs from other months, so loading November's data and taking its header into account as well
 data2 = sc.textFile("citibikedata/201611-citibike-tripdata.csv")
 header2 = data2.first()
 
