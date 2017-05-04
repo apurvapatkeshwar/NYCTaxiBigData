@@ -8,7 +8,7 @@ from pyspark.sql.types import *
 #from pyspark.ml.clustering import KMeans
 from pyspark.ml.linalg import Vectors
 
-
+#formula used to compute distance between 2 location
 def haversine(lat1, lng1, lat2, lng2):
     r = 6371
     dLat = Math.toRadians(lat2 - lat1);
@@ -20,15 +20,18 @@ def haversine(lat1, lng1, lat2, lng2):
     return d;
 
 
-# Load and parse the data
-#sc = SparkContext.getOrCreate()
+
 sc = SparkContext()
+sqlContext = SQLContext(sc)
+#reading green taxis data
 data = sc.textFile("outputf3")
 header = data.first()
 data = data.filter(lambda row : row != header)
+#removing the header, splitting the raw ',' separated string and giving them the datatypes to create RDD
 data = data.map(lambda x: x.split(",")).\
     map(lambda y: (int(y[0]), y[1], y[2],y[3],int(y[4]),float(y[5]),float(y[6]),float(y[7]),float(y[8]),int(y[9]),float(y[10]),float(y[11]),float(y[12]),float(y[13]),float(y[14]),float(y[15]),float(y[17]),float(y[18]),int(y[19]),int(y[20])))
-sqlContext = SQLContext(sc)
+
+#defining the schema of green taxis
 customSchema = StructType([ \
     StructField("VendorID", IntegerType(), True), \
     StructField("lpep_pickup_datetime", StringType(), True), \
@@ -51,29 +54,35 @@ customSchema = StructType([ \
     StructField("Payment_type", IntegerType(), True), \
     StructField("Trip_type", IntegerType(), True)])
 
+#converting green cabs RDD to pyspark dataframe
+df = sqlContext.createDataFrame(data, customSchema)
+#subsetting to get the required columns
+df2 = df[['Pickup_latitude', 'Pickup_longitude']]
 
-
+#reading yellow taxis data
 cab_data = sc.textFile("yellow_tripdata_2016-01_cleaned.csv")
 header = cab_data.first()
+#removing the header, splitting the raw ',' separated string and giving them the datatypes to create RDD
+cab_data = cab_data.filter(lambda row : row != header)
 cab_data = cab_data.map(lambda x: x.split(",")).\
     map(lambda y: (float(y[6]),float(y[5])))
 
+#subsetting the yellow taxi data along columns
 cab_customSchema = StructType([ \
      StructField("Pickup_latitude", DoubleType(), True), \
      StructField("Pickup_longitude", DoubleType(), True)])
+
+#converting yellowcabs RDD to pyspark dataframe
 cab_df = sqlContext.createDataFrame(cab_data, cab_customSchema)
 
-df = sqlContext.createDataFrame(data, customSchema)
-df2 = df[['Pickup_latitude', 'Pickup_longitude']]
 
-
+#merging green and yellow taxi data frames
 df_concat = cab_df.unionAll(df2)
-
 kmeans_rdd = df_concat.rdd.sortByKey()
 
 modelInput = kmeans_rdd.map(lambda x: Vectors.dense(x[0],x[1])).sortByKey()
 
-# Build the model (cluster the data)
+# Building the model (cluster the data)
 clusters = KMeans.train(modelInput, 200, maxIterations=50, initializationMode="random")
 centers = clusters.centers
 print("Cluster Centers: ")
@@ -82,38 +91,7 @@ for center in centers:
 
 
 
-data_citi=sc.textFile("citibikedata")
-data_citi_diff_header=sc.textFile("citibikedata/201601-citibike-tripdata.csv")
-header=data_citi.first()
-header2=data_citi_diff_header.first()
-data_citi = data_citi.filter(lambda row : row != header and row!=header2)
-data_citi = data_citi.map(lambda row : row.replace('"',''))
-data_citi = data_citi.map(lambda x: x.split(",")).\
-    map(lambda y: (int(y[0]), y[1], y[2],int(y[3]),y[4],float(y[5]),float(y[6]),int(y[7]),y[8],float(y[9]),float(y[10]),int(y[11]),y[12],int(y[14])))
-#
-
-customSchema = StructType([ \
-    StructField("tripduration", IntegerType(), True), \
-    StructField("starttime", DateType(), True), \
-    StructField("stoptime", DateType(), True), \
-    StructField("start_station_id", IntegerType(), True), \
-    StructField("start_station_name", StringType(), True), \
-    StructField("start_station_latitude", DoubleType(), True), \
-    StructField("start_station_longitude", DoubleType(), True), \
-    StructField("end_station_id", IntegerType(), True), \
-    StructField("end_station_name", StringType(), True), \
-    StructField("end_station_latitude", DoubleType(), True), \
-    StructField("end_station_longitude", DoubleType(), True), \
-    StructField("bikeid", IntegerType(), True), \
-    StructField("usertype", StringType(), True), \
-    StructField("gender", IntegerType(), True)])
-
-df_citi = sqlContext.createDataFrame(data_citi, customSchema)
-
-location_df_cit=df_citi.select('start_station_latitude','start_station_longitude').distinct()
-location_df_cit.show()
-
-# Evaluate clustering by computing Within Set Sum of Squared Errors
+# Evaluating the clustering by computing Within Set Sum of Squared Errors
 def error(point):
     center = clusters.centers[clusters.predict(point)]
     return sqrt(sum([x**2 for x in (point - center)]))
@@ -121,8 +99,10 @@ def error(point):
 WSSSE = parsedData.map(lambda point: error(point)).reduce(lambda x, y: x + y)
 print("Within Set Sum of Squared Error = " + str(WSSSE))
 
-# Save and load model
+# Saving the  model
 clusters.save(sc, "KModel")
+
+#To use this model, commans is as follows
 #sameModel = KMeansModel.load(sc, "KModel")
 
 
